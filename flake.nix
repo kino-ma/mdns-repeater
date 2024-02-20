@@ -3,13 +3,22 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs }: {
+  outputs = { self, nixpkgs, flake-utils }:
+    let
+      mdns-repeater = nixpkgs.stdenv.mkDeriviation {
+        pname = "mdns-repeater";
+        version = "1.11-unstable-2023-12-16";
+        nativeBuildInputs = [ nixpkgs.autoreconfHook ];
+      };
+    in
+    {
+      packages = flake-utils.lib.eachDefaultSystem (system: {
+        mdns-repeater = mdns-repeater;
+      });
 
-    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
-
-    packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
-
-  };
+      defaultPackage = flake-utils.lib.eachDefaultSystem (system: self.packages.${system}.mdns-repeater);
+    };
 }
