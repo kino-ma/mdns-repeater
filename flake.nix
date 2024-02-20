@@ -8,17 +8,35 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      mdns-repeater = nixpkgs.stdenv.mkDeriviation {
-        pname = "mdns-repeater";
-        version = "1.11-unstable-2023-12-16";
-        nativeBuildInputs = [ nixpkgs.autoreconfHook ];
-      };
+      supportedSystems = [ "x86_64-linux" ];
+
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
-      packages = flake-utils.lib.eachDefaultSystem (system: {
-        mdns-repeater = mdns-repeater;
-      });
+      packages = forAllSystems
+        (system:
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          {
+            mdns-repeater = pkgs.stdenv.mkDerivation
+              {
+                pname = "mdns-repeater";
+                version = "1.11-unstable-2023-12-16";
+                src = ./.;
 
-      defaultPackage = flake-utils.lib.eachDefaultSystem (system: self.packages.${system}.mdns-repeater);
+                buildPhase = ''
+                  make all
+                '';
+
+                installPhase = ''
+                  mkdir -p $out/bin
+                  cp mdns-repeater/mdns-repeater.o $out/bin/mdns-repeater
+                '';
+              };
+          });
+
+      defaultPackage = forAllSystems (system: self.packages.${system}.mdns-repeater);
     };
 }
+
